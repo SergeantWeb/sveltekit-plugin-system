@@ -1,7 +1,9 @@
+import type { ComponentType } from 'svelte';
+import type { Writable } from 'svelte/store';
 import { get, writable } from 'svelte/store';
 
-const createHooksStore = () => {
-	const { subscribe, set, update } = writable({
+const createHooksStore = (): Plugins.hookCreateStore => {
+	const { subscribe, set, update }: Writable<Plugins.hookStore> = writable({
 		components: {},
 		actions: {},
 		filters: {},
@@ -9,7 +11,8 @@ const createHooksStore = () => {
 	});
 
 	const addHook = (location: string, type: string, target: any) => {
-		if (get(hooks).initialized === true) return;
+		const _hooks: any = get(hooks);
+		if (_hooks.initialized === true) return;
 		update((hooks: any) => {
 			if (typeof hooks[type][location] === 'undefined') {
 				hooks[type][location] = [];
@@ -27,7 +30,7 @@ const createHooksStore = () => {
 		set,
 
 		/* Components */
-		addComponent: (location: string, component: any) => {
+		addComponent: (location: string, component: ComponentType) => {
 			addHook(location, 'components', component);
 		},
 
