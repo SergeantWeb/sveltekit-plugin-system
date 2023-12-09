@@ -1,9 +1,10 @@
+import type {Plugins} from "./types/plugins.d";
 import type { ComponentType } from 'svelte';
 import type { Writable } from 'svelte/store';
 import { get, writable } from 'svelte/store';
 
-const createHooksStore = (): Plugins.hookCreateStore => {
-	const { subscribe, set, update }: Writable<Plugins.hookStore> = writable({
+const createHooksStore = (): Plugins.HookCreateStore => {
+	const { subscribe, set, update }: Writable<Plugins.HookStore> = writable({
 		components: {},
 		actions: {},
 		filters: {},

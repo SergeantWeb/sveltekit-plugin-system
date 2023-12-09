@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Hook } from '$lib';
+	import Hook from '$lib/Hook.svelte';
 </script>
 
 <h1>Welcome to SvelteKit</h1>

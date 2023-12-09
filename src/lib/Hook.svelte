@@ -6,6 +6,6 @@
 
 {#if $hooks.components?.[location]}
 	{#each $hooks.components?.[location] as hook}
-		<svelte:component this={hook} />
+		<svelte:component this={hook} {...$$restProps} />
 	{/each}
 {/if}
