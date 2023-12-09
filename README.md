@@ -19,7 +19,9 @@ In `+layout.svelte` for client-side usage:
 ```sveltehtml
 <script lang="ts">
     import { loadPlugins } from 'sveltekit-plugin-system';
-    loadPlugins();
+    loadPlugins({
+        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+    });
 </script>
 
 <slot />
@@ -34,7 +36,9 @@ import type { Handle } from '@sveltejs/kit';
 import { loadPlugins } from 'sveltekit-plugin-system';
 
 export const handle: Handle = async ({ resolve, event }) => {
-	loadPlugins();
+    loadPlugins({
+        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+    });
 	return await resolve(event);
 };
 ```
@@ -54,11 +58,15 @@ Placed after `<slot />`, the plugins can now inject components after the slot co
 
 ```sveltehtml
 <script lang="ts">
-    import {loadPlugins, Hook} from "sveltekit-plugin-system";
-    loadPlugins();
+    import { loadPlugins, Hook } from "sveltekit-plugin-system";
+
+    loadPlugins({
+        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+    });
 </script>
 
 <slot />
+
 <Hook location="after-content" /> <!-- Add hook location here -->
 ```
 
@@ -74,7 +82,7 @@ In `src/plugins/plugin-example/index.ts`:
 import type { Plugins } from 'sveltekit-plugin-system';
 import ComponentExample from './ComponentExample.svelte';
 
-export default (hooks: Plugins.hookCreateStore) => {
+export default (hooks: Plugins.HookCreateStore) => {
 	hooks.addComponent('after-content', ComponentExample);
 };
 ```
@@ -91,7 +99,9 @@ In our `+layout.svelte` file, we will add the `doAction` function from `hooks` s
 <script lang="ts">
     import { loadPlugins, hooks } from "sveltekit-plugin-system";
 
-    loadPlugins()
+    loadPlugins({
+        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+    });
 
     $: hooks.doAction('log-something') // Action hook
 </script>
@@ -106,7 +116,7 @@ In our plugin, we can now use the `doAction` function from `hooks` store :
 ```typescript
 import type { Plugins } from 'sveltekit-plugin-system';
 
-export default (hooks: Plugins.hookCreateStore) => {
+export default (hooks: Plugins.HookCreateStore) => {
 	// Add an action to `log-something` location.
 	hooks.addAction('log-something', () => {
 		console.log('This log message comes from a plugin!');
@@ -134,20 +144,23 @@ import type { Handle } from '@sveltejs/kit';
 import { loadPlugins, hooks } from 'sveltekit-plugin-system';
 
 export const handle: Handle = async ({ resolve, event }) => {
-	loadPlugins(); // Load plugins server-side
+	// Load plugins server-side
+    loadPlugins({
+        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+    });
 
-	event.locals = {}; // Init locals as an empty object
-
-	// Filter event.locals from plugins
-	event.locals = hooks.applyFilter('server-locals', event.locals);
-
-	// Add console.log to check the updated locals in the console
-	if (Object.keys(event.locals).length > 0) {
-		console.log('> A plugin is filtering event.locals :');
-		console.log('> event.locals =', event.locals);
-	}
-
-	return await resolve(event);
+    event.locals = {}; // Init locals as an empty object
+    
+    // Filter event.locals from plugins
+    event.locals = hooks.applyFilter('server-locals', event.locals);
+    
+    // Add console.log to check the updated locals in the console
+    if (Object.keys(event.locals).length > 0) {
+        console.log('> A plugin is filtering event.locals :');
+        console.log('> event.locals =', event.locals);
+    }
+    
+    return await resolve(event);
 };
 ```
 
@@ -156,12 +169,12 @@ In our plugin :
 ```typescript
 import type { Plugins } from 'sveltekit-plugin-system';
 
-export default (hooks: Plugins.hookCreateStore) => {
-	// Filter event.locals
-	hooks.addFilter('server-locals', (locals: { [key: string]: string }) => {
-		locals.test = 'ok';
-		return locals;
-	});
+export default (hooks: Plugins.HookCreateStore) => {
+    // Filter event.locals
+    hooks.addFilter('server-locals', (locals: { [key: string]: string }) => {
+        locals.test = 'ok';
+        return locals;
+    });
 };
 ```
 
@@ -170,22 +183,6 @@ Now, re-build your project, and start it, you will see the following logs in you
 ```
 > A plugin is filtering event.locals :
 > event.locals = { test: 'ok' }
-```
-
-# Load plugins from a custom path
-
-To specify a custom plugin path, you can add the `plugins` option to `loadPlugins` function.
-
-It leverages the [vite's global import feature](https://vitejs.dev/guide/features.html#glob-import):
-
-```typescript
-import { loadPlugins } from 'sveltekit-plugin-system';
-loadPlugins({
-	plugins: import.meta.glob(
-		'../../**/plugins/**/index.(ts|js)', // Default path
-		{ eager: true }
-	)
-});
 ```
 
 # Tailwind compatibility

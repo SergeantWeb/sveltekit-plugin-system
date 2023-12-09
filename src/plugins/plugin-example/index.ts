@@ -1,7 +1,7 @@
-import type { Plugins } from '../../app';
+import type { Plugins } from '$lib';
 import ComponentExample from './ComponentExample.svelte';
 
-export default (hooks: Plugins.hookCreateStore) => {
+export default (hooks: Plugins.HookCreateStore) => {
 	// Insert a component to `after-content` location.
 	hooks.addComponent('after-content', ComponentExample);
 

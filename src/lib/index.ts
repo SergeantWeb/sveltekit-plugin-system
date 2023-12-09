@@ -1,5 +1,5 @@
-export type { Plugins } from '../app';
+export * from '$lib/types/plugins.d'
 
-export { loadPlugins } from '$lib/loadPlugins.js';
-export { hooks } from '$lib/hookStore.js';
+export { loadPlugins } from '$lib/loadPlugins';
+export { hooks } from '$lib/hookStore';
 export { default as Hook } from '$lib/Hook.svelte';
