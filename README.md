@@ -18,8 +18,10 @@ In `+layout.svelte` for client-side usage:
 
 ```sveltehtml
 <script lang="ts">
-    import { loadPlugins } from 'sveltekit-plugin-system';
-    loadPlugins();
+	import { loadPlugins } from 'sveltekit-plugin-system';
+	loadPlugins({
+		plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+	})
 </script>
 
 <slot />
@@ -34,7 +36,9 @@ import type { Handle } from '@sveltejs/kit';
 import { loadPlugins } from 'sveltekit-plugin-system';
 
 export const handle: Handle = async ({ resolve, event }) => {
-	loadPlugins();
+	loadPlugins({
+		plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+	})
 	return await resolve(event);
 };
 ```
@@ -54,8 +58,10 @@ Placed after `<slot />`, the plugins can now inject components after the slot co
 
 ```sveltehtml
 <script lang="ts">
-    import {loadPlugins, Hook} from "sveltekit-plugin-system";
-    loadPlugins();
+	import {loadPlugins, Hook} from "sveltekit-plugin-system";
+	loadPlugins({
+		plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+	})
 </script>
 
 <slot />
@@ -89,11 +95,13 @@ In our `+layout.svelte` file, we will add the `doAction` function from `hooks` s
 
 ```sveltehtml
 <script lang="ts">
-    import { loadPlugins, hooks } from "sveltekit-plugin-system";
+	import { loadPlugins, hooks } from "sveltekit-plugin-system";
 
-    loadPlugins()
+	loadPlugins({
+		plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+	})
 
-    $: hooks.doAction('log-something') // Action hook
+	$: hooks.doAction('log-something') // Action hook
 </script>
 
 <slot />
@@ -134,7 +142,10 @@ import type { Handle } from '@sveltejs/kit';
 import { loadPlugins, hooks } from 'sveltekit-plugin-system';
 
 export const handle: Handle = async ({ resolve, event }) => {
-	loadPlugins(); // Load plugins server-side
+	// Load plugins server-side
+	loadPlugins({
+		plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
+	})
 
 	event.locals = {}; // Init locals as an empty object
 
