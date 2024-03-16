@@ -13,9 +13,9 @@ declare global {
 		export interface HookCreateStore extends Writable<HookStore> {
 			addComponent: (location: string, component: ComponentType) => void;
 			addAction: (location: string, callback: any) => void;
-			doAction: (location: string) => void;
+			doAction: (location: string, ...args?: any, ...args?: any) => void;
 			addFilter: (location: string, filter: any) => void;
-			applyFilter: (location: string, data: any) => any;
+			applyFilter: (location: string, data: any, ...args?: any) => any;
 		}
 	}
 }

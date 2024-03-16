@@ -39,11 +39,15 @@ const createHooksStore = (): Plugins.HookCreateStore => {
 		addAction: (location: string, callback: any) => {
 			addHook(location, 'actions', callback);
 		},
-		doAction: (location: string) => {
+		doAction: async (location: string, ...args: any) => {
 			const _hooks: any = get(hooks);
 			if (_hooks.actions?.[location]) {
 				for (const action of _hooks.actions[location]) {
-					action();
+					if(action[Symbol.toStringTag] === 'AsyncFunction') {
+						await action(...args);
+					} else {
+						action(...args);
+					}
 				}
 			}
 		},
@@ -52,11 +56,15 @@ const createHooksStore = (): Plugins.HookCreateStore => {
 		addFilter: (location: string, filter: any) => {
 			addHook(location, 'filters', filter);
 		},
-		applyFilter: (location: string, data: any) => {
+		applyFilter: async (location: string, data: any, ...args: any) => {
 			const _hooks: any = get(hooks);
 			if (_hooks.filters?.[location]) {
 				for (const filter of _hooks.filters[location]) {
-					data = filter(data);
+					if(filter[Symbol.toStringTag] === 'AsyncFunction') {
+						data = await filter(data, ...args);
+					} else {
+						data = filter(data, ...args);
+					}
 				}
 			}
 			return data;
