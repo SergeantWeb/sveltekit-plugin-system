@@ -187,8 +187,6 @@ Now, re-build your project, and start it, you will see the following logs in you
 
 # Tailwind compatibility
 
-ChatGPT
-
 You can use Tailwind in your plugin's components, but Tailwind needs to know their location in order to analyze them.
 
 In `tailwind.config.js`:
