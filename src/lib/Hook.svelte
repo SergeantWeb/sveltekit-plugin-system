@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { hooks } from '$lib';
 
-	export let location: string;
+	let { location, ...rest }: { location: string; [key: string]: any } = $props();
 </script>
 
-{#if $hooks.components?.[location]}
-	{#each $hooks.components?.[location] as hook}
-		<svelte:component this={hook} {...$$restProps} />
-	{/each}
-{/if}
+{#each hooks.components?.[location] ?? [] as Item (Item)}
+	<Item {...rest} />
+{/each}

@@ -1,7 +1,5 @@
-<script lang="ts">
-	import Hook from '$lib/Hook.svelte';
-</script>
-
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
-<Hook location="after-content" />
+<h1>sveltekit-plugin-system</h1>
+<p>
+	This is the library package. For a runnable demo of every feature, see
+	<code>examples/basic</code> in the repository.
+</p>
