@@ -3,6 +3,9 @@ node_modules
 /build
 /.svelte-kit
 /package
+
+# Example apps have their own tooling
+/examples
 .env
 .env.*
 !.env.example

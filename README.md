@@ -1,201 +1,296 @@
-# Sveltekit plugin system
+# sveltekit-plugin-system
 
-Load plugins and inject code or component into custom location in your sveltekit project.
+> A tiny plugin system for SvelteKit — let self-contained "plugins" inject **components**, run **actions**, and transform data through **filters** at named locations across your app, without touching your core code.
 
-# Getting started
+Think of it as WordPress-style hooks for SvelteKit: your app exposes named _locations_, and plugins (dropped into a `plugins/` folder) hook into them. Works on both the **server** and the **client**.
 
-## Install package
+- **Requirements:** Svelte 5 and SvelteKit 2. _(For Svelte 4 / SvelteKit 1, use `0.1.x`.)_
 
-```
+---
+
+## Table of contents
+
+- [Why](#why)
+- [Concepts](#concepts)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Writing a plugin](#writing-a-plugin)
+- [The three hook types](#the-three-hook-types)
+  - [Components](#1-components)
+  - [Actions](#2-actions)
+  - [Filters](#3-filters)
+- [Loading plugins](#loading-plugins)
+- [API reference](#api-reference)
+- [Tailwind compatibility](#tailwind-compatibility)
+- [Examples](#examples)
+- [Contributing](#contributing)
+
+---
+
+## Why
+
+You want a codebase where features can be added or removed as **drop-in folders** — for a
+marketplace, a white-label product, optional modules, or simply to keep concerns separate.
+Instead of editing shared files every time, you expose _extension points_ and let plugins
+attach to them.
+
+## Concepts
+
+- **Location** — a named extension point (a plain string, e.g. `"after-content"`).
+- **Plugin** — a folder containing an `index.ts` (or `index.js`) whose **default export** is a
+  function that receives the shared `hooks` object and registers hooks on locations.
+- **Hook** — what a plugin attaches to a location. There are three kinds:
+  - a **component** to render,
+  - an **action** to run (side effects),
+  - a **filter** to transform a value.
+
+## Installation
+
+```bash
 npm i -D sveltekit-plugin-system
 ```
 
-## Load plugins
+## Quick start
 
-### Client-side
-
-In `+layout.svelte` for client-side usage:
-
-```sveltehtml
-<script lang="ts">
-    import { loadPlugins } from 'sveltekit-plugin-system';
-    loadPlugins({
-        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
-    });
-</script>
-
-<slot />
+```
+src/
+├─ routes/
+│  ├─ +layout.ts        # register plugins (see "Loading plugins")
+│  ├─ +layout.svelte
+│  └─ +page.svelte
+└─ plugins/
+   └─ hello/
+      ├─ index.ts       # the plugin
+      └─ Banner.svelte
 ```
 
-### Server-side
+**1. Register plugins** in `src/routes/+layout.ts`:
 
-In `hooks.server.ts` for server-side usage:
-
-```typescript
-import type { Handle } from '@sveltejs/kit';
+```ts
 import { loadPlugins } from 'sveltekit-plugin-system';
 
-export const handle: Handle = async ({ resolve, event }) => {
-    loadPlugins({
-        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
-    });
-	return await resolve(event);
-};
-```
-
-> You need to re-build your project to make it works if you add or remove a server-side hook in your plugin(s).
-
-# Insert a component
-
-## Add hook location
-
-The hook location is the target location where the component or code will be injected from plugins.
-
-For this example, in `+layout.svelte`, we are adding the `Hook` component,
-with a location named `after-content`.
-
-Placed after `<slot />`, the plugins can now inject components after the slot content.
-
-```sveltehtml
-<script lang="ts">
-    import { loadPlugins, Hook } from "sveltekit-plugin-system";
-
-    loadPlugins({
-        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
-    });
-</script>
-
-<slot />
-
-<Hook location="after-content" /> <!-- Add hook location here -->
-```
-
-## Create a plugin
-
-Plugins are simple folders containing an `index.ts` file that exports a function with `hooks` store as an argument.
-
-We can inject a component in the `after-content` location from the plugin :
-
-In `src/plugins/plugin-example/index.ts`:
-
-```typescript
-import type { Plugins } from 'sveltekit-plugin-system';
-import ComponentExample from './ComponentExample.svelte';
-
-export default (hooks: Plugins.HookCreateStore) => {
-	hooks.addComponent('after-content', ComponentExample);
-};
-```
-
-# Insert an action
-
-Actions are function that will be executed at the given location.
-
-For example, let's log something from our plugin :
-
-In our `+layout.svelte` file, we will add the `doAction` function from `hooks` store, and name the hook location `log-something` :
-
-```sveltehtml
-<script lang="ts">
-    import { loadPlugins, hooks } from "sveltekit-plugin-system";
-
-    loadPlugins({
-        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
-    });
-
-    $: hooks.doAction('log-something') // Action hook
-</script>
-
-<slot />
-```
-
-In our plugin, we can now use the `doAction` function from `hooks` store :
-
-`src/plugins/plugin-example/index.ts`:
-
-```typescript
-import type { Plugins } from 'sveltekit-plugin-system';
-
-export default (hooks: Plugins.HookCreateStore) => {
-	// Add an action to `log-something` location.
-	hooks.addAction('log-something', () => {
-		console.log('This log message comes from a plugin!');
+export const load = () => {
+	loadPlugins({
+		plugins: import.meta.glob('../plugins/**/index.(ts|js)', { eager: true })
 	});
 };
 ```
 
-Now, on each page of your project, you will see the log message in the console: `This log message comes from a plugin!`
+**2. Expose a location** in a component (here in `+page.svelte`):
 
-# Add a filter
+```svelte
+<script lang="ts">
+	import { Hook } from 'sveltekit-plugin-system';
+</script>
 
-Filters are functions that take an argument and return something.
+<h1>Home</h1>
+<Hook location="after-content" />
+```
 
-It's useful to update a variable and return the updated variable.
+**3. Write a plugin** in `src/plugins/hello/index.ts`:
 
-For example, we will add a key: value to event.locals from a plugin:
+```ts
+import type { Plugins } from 'sveltekit-plugin-system';
+import Banner from './Banner.svelte';
 
-In our project, we can add the server-side sveltekit hook : `hooks.server.ts`,
-initialize the locals variable to an empty object, and make it filterable from plugins.
-
-In `hooks.server.ts`:
-
-```typescript
-import type { Handle } from '@sveltejs/kit';
-import { loadPlugins, hooks } from 'sveltekit-plugin-system';
-
-export const handle: Handle = async ({ resolve, event }) => {
-	// Load plugins server-side
-    loadPlugins({
-        plugins: import.meta.glob('../../**/plugins/**/index.(ts|js)', { eager: true })
-    });
-
-    event.locals = {}; // Init locals as an empty object
-    
-    // Filter event.locals from plugins
-    event.locals = hooks.applyFilter('server-locals', event.locals);
-    
-    // Add console.log to check the updated locals in the console
-    if (Object.keys(event.locals).length > 0) {
-        console.log('> A plugin is filtering event.locals :');
-        console.log('> event.locals =', event.locals);
-    }
-    
-    return await resolve(event);
+export default (hooks: Plugins.HookCreateStore) => {
+	hooks.addComponent('after-content', Banner);
 };
 ```
 
-In our plugin :
+That's it — `Banner` now renders wherever `<Hook location="after-content" />` appears.
 
-```typescript
+## Writing a plugin
+
+A plugin is a folder with an `index.ts` that default-exports a registration function:
+
+```ts
 import type { Plugins } from 'sveltekit-plugin-system';
 
 export default (hooks: Plugins.HookCreateStore) => {
-    // Filter event.locals
-    hooks.addFilter('server-locals', (locals: { [key: string]: string }) => {
-        locals.test = 'ok';
-        return locals;
-    });
+	// register components / actions / filters here
 };
 ```
 
-Now, re-build your project, and start it, you will see the following logs in your server-side console :
+Every `plugins/**/index.(ts|js)` matched by your `import.meta.glob` is loaded automatically.
 
+## The three hook types
+
+### 1. Components
+
+Render a Svelte component at a location. Any extra props passed to `<Hook>` are forwarded to
+the injected components.
+
+```ts
+// in a plugin
+hooks.addComponent('sidebar', MyWidget);
 ```
-> A plugin is filtering event.locals :
-> event.locals = { test: 'ok' }
+
+```svelte
+<!-- in your app -->
+<Hook location="sidebar" title="Widgets" />
+<!-- MyWidget receives { title: "Widgets" } -->
 ```
 
-# Tailwind compatibility
+### 2. Actions
 
-You can use Tailwind in your plugin's components, but Tailwind needs to know their location in order to analyze them.
+Run one or more callbacks registered on a location. Extra arguments are forwarded, and
+`async` handlers are awaited.
 
-In `tailwind.config.js`:
+```ts
+// in a plugin
+hooks.addAction('user:login', (user) => track('login', user));
+hooks.addAction('user:login', async (user) => {
+	await sendWelcomeEmail(user);
+});
+```
 
-```typescript
+```ts
+// in your app
+await hooks.doAction('user:login', currentUser);
+```
+
+### 3. Filters
+
+Transform a value by passing it through every filter registered on a location, in
+registration order. Extra arguments are forwarded, and `async` filters are awaited.
+
+```ts
+// in a plugin
+hooks.addFilter('page-title', (title) => `${title} • My Site`);
+```
+
+```ts
+// in your app (e.g. a load function)
+const title = await hooks.applyFilter('page-title', 'Home');
+// → "Home • My Site"
+```
+
+Server-side too — a common pattern is enriching `event.locals` in `hooks.server.ts`:
+
+```ts
+import type { Handle } from '@sveltejs/kit';
+import { loadPlugins, hooks } from 'sveltekit-plugin-system';
+
+// Load plugins once, before requests are handled.
+loadPlugins({ plugins: import.meta.glob('./plugins/**/index.(ts|js)', { eager: true }) });
+
+export const handle: Handle = async ({ resolve, event }) => {
+	event.locals = await hooks.applyFilter('server-locals', {});
+	return resolve(event);
+};
+```
+
+## Loading plugins
+
+Call `loadPlugins` **once**. `import.meta.glob` paths are resolved relative to the file that
+calls it.
+
+**Recommended — `+layout.ts`:**
+
+```ts
+import { loadPlugins } from 'sveltekit-plugin-system';
+
+export const load = () => {
+	loadPlugins({ plugins: import.meta.glob('../plugins/**/index.(ts|js)', { eager: true }) });
+};
+```
+
+> **Why `+layout.ts` and not `+layout.svelte`?**
+> `load` functions run **before** components mount and **before** child `load`s, on both the
+> server and the client. Registering plugins there guarantees hooks are available everywhere —
+> including inside page `load` functions and for SSR-consistent values. If a page `load` needs a
+> filter, `await parent()` first so the layout `load` has run.
+>
+> Registering plugins inside a component `<script>` also works, but only _after_ mount, so
+> client-side `load` functions won't see them yet.
+
+Load plugins **server-side** in `hooks.server.ts` (module scope) if you use server hooks such as
+`server-locals` — see the [Filters](#3-filters) example.
+
+> ℹ️ Adding or removing a **server-side** hook requires restarting/rebuilding your app.
+
+## API reference
+
+Import the shared store and helpers from the package:
+
+```ts
+import { loadPlugins, hooks, Hook, createHooksStore } from 'sveltekit-plugin-system';
+import type { Plugins } from 'sveltekit-plugin-system';
+```
+
+### `loadPlugins(options?)`
+
+Runs every plugin's default export and marks the store initialized (after which hooks can no
+longer be registered).
+
+| Option    | Type                           | Description                                                                                                           |
+| --------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `plugins` | `Record<string, { default? }>` | Plugin modules, typically `import.meta.glob(..., { eager: true })`. Defaults to globbing `plugins/**/index.(ts\|js)`. |
+
+### `hooks`
+
+The shared singleton used by plugins and your app.
+
+| Member                                 | Description                                                                              |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `addComponent(location, component)`    | Register a component at `location`.                                                      |
+| `addAction(location, callback)`        | Register an action callback at `location`.                                               |
+| `doAction(location, ...args)`          | Run all actions at `location` (awaits async ones). Returns `Promise<void>`.              |
+| `addFilter(location, filter)`          | Register a filter at `location`.                                                         |
+| `applyFilter(location, data, ...args)` | Pass `data` through all filters at `location` (awaits async ones). Returns `Promise<T>`. |
+| `components` / `actions` / `filters`   | Reactive read-only accessors (Svelte 5 runes) of the registered hooks.                   |
+| `initialized`                          | `true` once `loadPlugins` has run.                                                       |
+
+### `<Hook location=... {...props} />`
+
+Renders every component registered at `location`, forwarding any extra props.
+
+### `createHooksStore()`
+
+Creates an isolated store instance (same shape as `hooks`). Useful for tests or advanced setups.
+
+### Deprecated: `$hooks` store
+
+For backwards compatibility, `hooks` still implements Svelte's `Writable` contract
+(`subscribe` / `set` / `update`), so `$hooks` auto-subscription keeps working:
+
+```svelte
+<script>
+	import { hooks } from 'sveltekit-plugin-system';
+	// legacy — prefer the reactive `hooks.components` accessor instead
+	$: locations = Object.keys($hooks.components);
+</script>
+```
+
+Prefer the runes accessors (`hooks.components`, `hooks.actions`, `hooks.filters`) in new code.
+
+## Tailwind compatibility
+
+Tailwind needs to know where your plugin components live to compile their classes:
+
+```ts
+// tailwind.config.js
 export default {
 	content: [
 		'./src/**/*.{html,js,svelte,ts}',
-		'./plugins/**/*.{html,js,svelte,ts}' // Specify your plugins path here
+		'./src/plugins/**/*.{html,js,svelte,ts}' // your plugins path
 	]
 };
+```
+
+## Examples
+
+A complete, runnable SvelteKit app demonstrating every feature (components, actions, sync/async,
+filters, server-side filters, the runes read API, and the deprecated `$hooks` store) lives in
+[`examples/basic`](./examples/basic).
+
+## Contributing
+
+```bash
+npm install
+npm run check   # type-check
+npm run lint    # prettier + eslint
+npm test        # vitest (unit + regression)
+npm run build   # build + publint
 ```
